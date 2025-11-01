@@ -17,7 +17,6 @@ pub struct OpenFile {
     pub path: PathBuf,
 }
 
-// In layout/mod.rs, change these lines:
 #[component]
 pub fn Layout() -> Element {
     let mut strip_visible = use_signal(|| true);
@@ -28,9 +27,13 @@ pub fn Layout() -> Element {
     let mut right_sidebar_visible = use_signal(|| false);
     let mut is_split_horizontal = use_signal(|| false);
 
-    // Changed: Now we have a list of open files and an active index - MAKE THESE MUTABLE
+    // Main state for open files
     let mut open_files = use_signal(|| Vec::<OpenFile>::new());
     let mut active_file_index = use_signal(|| None::<usize>);
+
+    // SEPARATE state for the right split pane
+    let mut right_pane_file_index = use_signal(|| None::<usize>);
+
     let colors = use_theme().colors();
 
     let mut workspace_path = use_signal(|| {
@@ -40,17 +43,14 @@ pub fn Layout() -> Element {
             .to_string()
     });
 
-    // File operation handlers - FIXED VERSION
+    // File operation handlers
     let on_open_file = move |path: String| {
         let path_buf = PathBuf::from(path);
 
-        // Check if file is already open
         let mut files = open_files.write();
         if let Some(existing_index) = files.iter().position(|f| f.path == path_buf) {
-            // File already open, just switch to it
             active_file_index.set(Some(existing_index));
         } else {
-            // Add new file
             files.push(OpenFile { path: path_buf });
             active_file_index.set(Some(files.len() - 1));
         }
@@ -59,27 +59,21 @@ pub fn Layout() -> Element {
     let on_open_folder = move |path: String| {
         println!("Setting workspace to: {}", path);
         workspace_path.set(path);
-
         open_files.write().clear();
         active_file_index.set(None);
+        right_pane_file_index.set(None);
     };
 
     let on_new_file = move |_: ()| {
-        // Changed to take unit argument
         println!("Creating new file");
-        // TODO: Implement new file creation with a temporary path
     };
 
     let on_save_file = move |_: ()| {
-        // Changed to take unit argument
         println!("Saving current file");
-        // TODO: Implement save logic
     };
 
     let on_save_as = move |_: ()| {
-        // Changed to take unit argument
         println!("Save as dialog");
-        // TODO: Implement save as logic
     };
 
     rsx! {
@@ -114,7 +108,6 @@ pub fn Layout() -> Element {
                 on_toggle_right_sidebar: move |_| {
                     right_sidebar_visible.set(!right_sidebar_visible());
                 },
-                // ADD THESE EVENT HANDLERS:
                 on_open_file: EventHandler::new(on_open_file),
                 on_open_folder: EventHandler::new(on_open_folder),
                 on_new_file: EventHandler::new(on_new_file),
@@ -163,18 +156,26 @@ pub fn Layout() -> Element {
                     style: "flex: 1; display: flex; flex-direction: column; min-width: 0; height: 100%; min-height: 0; overflow: hidden;",
 
                     // Main content area
-                    // Main content area
                     if !is_split_horizontal() {
                         div {
                             style: if terminal_visible() { "flex: 1; display: flex; flex-direction: column; min-height: 0;" } else { "flex: 1; display: flex; flex-direction: column; height: 100%;" },
                             MainContent {
                                 open_files: open_files,
                                 active_file_index: active_file_index,
-                                workspace_path: workspace_path, // ADD THIS
-                                on_split_right: Some(EventHandler::new(move |_| { is_split_horizontal.set(true); })),
-                                on_split_down: Some(EventHandler::new(move |_| { is_split_horizontal.set(true); })),
-                                on_close_split: Some(EventHandler::new(move |_| { is_split_horizontal.set(false); })),
-                                is_split: Some(is_split_horizontal()),
+                                workspace_path: workspace_path,
+                                on_split_right: Some(EventHandler::new(move |_| {
+                                    is_split_horizontal.set(true);
+                                    // Initialize right pane with the current active file
+                                    right_pane_file_index.set(active_file_index());
+                                })),
+                                on_split_down: Some(EventHandler::new(move |_| {
+                                    is_split_horizontal.set(true);
+                                    right_pane_file_index.set(active_file_index());
+                                })),
+                                on_close_split: Some(EventHandler::new(move |_| {
+                                    is_split_horizontal.set(false);
+                                })),
+                                is_split: Some(false),
                             }
                         }
                     } else {
@@ -187,24 +188,28 @@ pub fn Layout() -> Element {
                                 MainContent {
                                     open_files: open_files,
                                     active_file_index: active_file_index,
-                                    workspace_path: workspace_path, // ADD THIS
-                                    on_split_right: Some(EventHandler::new(move |_| { is_split_horizontal.set(true); })),
-                                    on_split_down: Some(EventHandler::new(move |_| { is_split_horizontal.set(true); })),
-                                    on_close_split: Some(EventHandler::new(move |_| { is_split_horizontal.set(false); })),
-                                    is_split: Some(is_split_horizontal()),
+                                    workspace_path: workspace_path,
+                                    on_split_right: Some(EventHandler::new(move |_| {})),
+                                    on_split_down: Some(EventHandler::new(move |_| {})),
+                                    on_close_split: Some(EventHandler::new(move |_| {
+                                        is_split_horizontal.set(false);
+                                    })),
+                                    is_split: Some(true),
                                 }
                             }
-                            // Right pane (mirrors the same active file index for now)
+                            // Right pane - uses its own file index
                             div {
                                 style: "flex: 1; min-width: 0; display: flex; flex-direction: column;",
                                 MainContent {
                                     open_files: open_files,
-                                    active_file_index: active_file_index,
-                                    workspace_path: workspace_path, // ADD THIS
-                                    on_split_right: Some(EventHandler::new(move |_| { is_split_horizontal.set(true); })),
-                                    on_split_down: Some(EventHandler::new(move |_| { is_split_horizontal.set(true); })),
-                                    on_close_split: Some(EventHandler::new(move |_| { is_split_horizontal.set(false); })),
-                                    is_split: Some(is_split_horizontal()),
+                                    active_file_index: right_pane_file_index,
+                                    workspace_path: workspace_path,
+                                    on_split_right: Some(EventHandler::new(move |_| {})),
+                                    on_split_down: Some(EventHandler::new(move |_| {})),
+                                    on_close_split: Some(EventHandler::new(move |_| {
+                                        is_split_horizontal.set(false);
+                                    })),
+                                    is_split: Some(true),
                                 }
                             }
                         }
@@ -238,7 +243,6 @@ fn Terminal() -> Element {
     let mut terminal_output = use_signal(|| Vec::<String>::new());
     let colors = use_theme().colors();
 
-    // Initialize terminal with current working directory
     use_effect(move || {
         let cwd = std::env::current_dir()
             .map(|p| p.to_string_lossy().to_string())
@@ -258,7 +262,6 @@ fn Terminal() -> Element {
                 return;
             }
 
-            // Execute system command
             match tokio::process::Command::new("sh")
                 .arg("-c")
                 .arg(&cmd)
@@ -270,21 +273,18 @@ fn Terminal() -> Element {
                     let stdout = String::from_utf8_lossy(&result.stdout);
                     let stderr = String::from_utf8_lossy(&result.stderr);
 
-                    // Add stdout
                     if !stdout.is_empty() {
                         for line in stdout.lines() {
                             output.push(line.to_string());
                         }
                     }
 
-                    // Add stderr in red color (we'll use a prefix)
                     if !stderr.is_empty() {
                         for line in stderr.lines() {
                             output.push(format!("ERROR: {}", line));
                         }
                     }
 
-                    // Show exit status if non-zero
                     if !result.status.success() {
                         if let Some(code) = result.status.code() {
                             output.push(format!("Process exited with code: {}", code));
@@ -302,7 +302,6 @@ fn Terminal() -> Element {
         div {
             style: "height: 200px; background-color: {colors.bg_primary}; border-top: 1px solid {colors.border_primary}; display: flex; flex-direction: column; flex-shrink: 0;",
 
-            // Terminal header
             div {
                 style: "height: 30px; background-color: {colors.bg_secondary}; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid {colors.border_primary};",
                 span {
@@ -322,11 +321,9 @@ fn Terminal() -> Element {
                 }
             }
 
-            // Terminal content
             div {
                 style: "flex: 1; padding: 10px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12px; color: {colors.text_primary}; overflow-y: auto; white-space: pre-wrap;",
 
-                // Output lines
                 for (index, output_line) in terminal_output.read().iter().enumerate() {
                     div {
                         key: "{index}",
@@ -343,7 +340,6 @@ fn Terminal() -> Element {
                     }
                 }
 
-                // Input line
                 div {
                     style: "display: flex; align-items: center; gap: 4px; margin-top: 4px;",
                     span {

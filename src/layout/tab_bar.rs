@@ -1,5 +1,8 @@
+use crate::editor::RopeEditor;
 use crate::layout::OpenFile;
 use dioxus::prelude::*;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum SplitDirection {
@@ -11,6 +14,7 @@ pub enum SplitDirection {
 pub fn TabBar(
     open_files: Signal<Vec<OpenFile>>,
     active_file_index: Signal<Option<usize>>,
+    editors: Signal<HashMap<PathBuf, Signal<RopeEditor>>>, // ADD THIS
     is_split: bool,
     on_split_right: EventHandler<()>,
     on_split_down: EventHandler<()>,
@@ -18,7 +22,7 @@ pub fn TabBar(
 ) -> Element {
     rsx! {
         div {
-            style: "height: 30px; background-color: #252526; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between; overflow-x: auto; overflow-y: visible; flex-shrink: 0; position: relative; z-index: 3000;",
+            style: "height: 30px; background-color: #252526; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between; overflow-x: auto; overflow-y: visible; flex-shrink: 0;",
 
             // Left side - tabs
             div {
@@ -35,10 +39,16 @@ pub fn TabBar(
                             .unwrap_or("Unknown")
                             .to_string();
 
+                        // Check if this file is modified
+                        let is_modified = editors.read()
+                            .get(&file.path)
+                            .map(|editor_sig| editor_sig.read().is_modified())
+                            .unwrap_or(false);
+
                         rsx! {
                             div {
                                 key: "{index}",
-                                style: "background-color: {bg_color}; border-top: {border_top}; padding: 8px 12px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cccccc; cursor: pointer; border-right: 1px solid #333; user-select: none; flex-shrink: 0; min-width: 120px; max-width: 200px; white-space: nowrap;",
+                                style: "background-color: {bg_color}; border-top: {border_top}; padding: 4px 4px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cccccc; cursor: pointer; border-right: 1px solid #333; user-select: none; flex-shrink: 0; min-width: 120px; max-width: 200px; white-space: nowrap;",
                                 onclick: move |_| {
                                     active_file_index.set(Some(index));
                                 },
@@ -54,7 +64,12 @@ pub fn TabBar(
                                 }
 
                                 button {
-                                    style: "background: none; border: none; color: #858585; cursor: pointer; padding: 0; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; line-height: 1;",
+    style: if is_modified {
+        "background: none; border: none; color: #e7c500ff; cursor: pointer; padding: 0; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; line-height: 1;"
+    } else {
+        "background: none; border: none; color: #858585; cursor: pointer; padding: 0; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; line-height: 1;"
+    },
+                                    title: if is_modified { "Unsaved changes" } else { "Close" },
                                     onclick: move |evt| {
                                         evt.stop_propagation();
 
@@ -73,7 +88,8 @@ pub fn TabBar(
                                             }
                                         }
                                     },
-                                    "×"
+                                    // Show dot when modified, × when saved
+                                    if is_modified { "●" } else { "×" }
                                 }
                             }
                         }

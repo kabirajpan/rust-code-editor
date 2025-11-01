@@ -61,41 +61,41 @@ pub fn MainContent(
     // If no files are open, show welcome screen with TabBar
     if open_files.read().is_empty() {
         return rsx! {
-            main {
-                style: {
-                    let colors = use_theme().colors();
-                    format!(
-                        "flex: 1; background-color: {}; display: flex; flex-direction: column; height: 100%; min-height: 100%; overflow: visible;",
-                        colors.bg_primary
-                    )
-                },
-
-                TabBar {
-                    open_files: open_files,
-                    active_file_index: active_file_index,
-                    is_split: is_split.unwrap_or(false),
-                    on_split_right: move |_| if let Some(cb) = &on_split_right { cb.call(()) },
-                    on_split_down: move |_| if let Some(cb) = &on_split_down { cb.call(()) },
-                    on_close_split: move |_| if let Some(cb) = &on_close_split { cb.call(()) },
-                }
-
-                div {
-                    style: {
-                        let colors = use_theme().colors();
-                        format!(
-                            "flex: 1; display: flex; align-items: center; justify-content: center;"
-                        )
-                    },
-                    h2 {
+                    main {
                         style: {
                             let colors = use_theme().colors();
-                            format!("font-size: 2rem; font-weight: 400; color: {}; margin: 0;", colors.text_muted)
+                            format!(
+                                "flex: 1; background-color: {}; display: flex; flex-direction: column; height: 100%; min-height: 100%; overflow: visible;",
+                                colors.bg_primary
+                            )
                         },
-                        "Start editing..."
+
+                       TabBar {
+            open_files: open_files,
+            active_file_index: active_file_index,
+            editors: editors,  // ADD THIS
+            is_split: is_split.unwrap_or(false),
+            on_split_right: move |_| if let Some(cb) = &on_split_right { cb.call(()) },
+            on_split_down: move |_| if let Some(cb) = &on_split_down { cb.call(()) },
+            on_close_split: move |_| if let Some(cb) = &on_close_split { cb.call(()) },
+        }
+                        div {
+                            style: {
+                                let colors = use_theme().colors();
+                                format!(
+                                    "flex: 1; display: flex; align-items: center; justify-content: center;"
+                                )
+                            },
+                            h2 {
+                                style: {
+                                    let colors = use_theme().colors();
+                                    format!("font-size: 2rem; font-weight: 400; color: {}; margin: 0;", colors.text_muted)
+                                },
+                                "Start editing..."
+                            }
+                        }
                     }
-                }
-            }
-        };
+                };
     }
 
     // Get the currently active file
@@ -207,79 +207,81 @@ pub fn MainContent(
         };
 
         rsx! {
-            main {
-                style: {
-                    let colors = use_theme().colors();
-                    format!(
-                        "flex: 1; background-color: {}; display: flex; flex-direction: column; height: 100%; min-height: 100%; overflow: visible;",
-                        colors.bg_primary
-                    )
-                },
-
-                TabBar {
-                    open_files: open_files,
-                    active_file_index: active_file_index,
-                    is_split: is_split.unwrap_or(false),
-                    on_split_right: move |_| if let Some(cb) = &on_split_right { cb.call(()) },
-                    on_split_down: move |_| if let Some(cb) = &on_split_down { cb.call(()) },
-                    on_close_split: move |_| if let Some(cb) = &on_close_split { cb.call(()) },
-                }
-
-                div {
-                    style: {
-                        let colors = use_theme().colors();
-                        format!(
-                            "height: 22px; background-color: {}; border-bottom: 1px solid {}; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; font-size: 0.75rem; color: {}; gap: 6px; flex-shrink: 0; position: relative; z-index: 2;",
-                            colors.bg_primary,
-                            colors.border_primary,
-                            colors.text_muted
-                        )
-                    },
-                    div {
-                        style: "display: flex; align-items: center; gap: 6px;",
-                        {path_breadcrumb}
-                    }
-                    {editor_info}
-                }
-
-                div {
-                    key: "{file.path.to_string_lossy()}-container",
-                    style: "flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; height: calc(100% - 52px);",
-                    {editor_content}
-                }
-            }
-        }
-    } else {
-        rsx! {
-            main {
-                style: {
-                    let colors = use_theme().colors();
-                    format!(
-                        "flex: 1; background-color: {}; display: flex; flex-direction: column; height: 100%; min-height: 100%; overflow: visible;",
-                        colors.bg_primary
-                    )
-                },
-
-                TabBar {
-                    open_files: open_files,
-                    active_file_index: active_file_index,
-                    is_split: is_split.unwrap_or(false),
-                    on_split_right: move |_| if let Some(cb) = &on_split_right { cb.call(()) },
-                    on_split_down: move |_| if let Some(cb) = &on_split_down { cb.call(()) },
-                    on_close_split: move |_| if let Some(cb) = &on_close_split { cb.call(()) },
-                }
-
-                div {
-                    style: "flex: 1; display: flex; align-items: center; justify-content: center;",
-                    span {
+                    main {
                         style: {
                             let colors = use_theme().colors();
-                            format!("color: {};", colors.text_muted)
+                            format!(
+                                "flex: 1; background-color: {}; display: flex; flex-direction: column; height: 100%; min-height: 100%; overflow: visible;",
+                                colors.bg_primary
+                            )
                         },
-                        "No file selected"
+
+                       TabBar {
+            open_files: open_files,
+            active_file_index: active_file_index,
+            editors: editors,  // ADD THIS
+            is_split: is_split.unwrap_or(false),
+            on_split_right: move |_| if let Some(cb) = &on_split_right { cb.call(()) },
+            on_split_down: move |_| if let Some(cb) = &on_split_down { cb.call(()) },
+            on_close_split: move |_| if let Some(cb) = &on_close_split { cb.call(()) },
+        }
+
+                        div {
+                            style: {
+                                let colors = use_theme().colors();
+                                format!(
+                                    "height: 22px; background-color: {}; border-bottom: 1px solid {}; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; font-size: 0.75rem; color: {}; gap: 6px; flex-shrink: 0; position: relative; z-index: 2;",
+                                    colors.bg_primary,
+                                    colors.border_primary,
+                                    colors.text_muted
+                                )
+                            },
+                            div {
+                                style: "display: flex; align-items: center; gap: 6px;",
+                                {path_breadcrumb}
+                            }
+                            {editor_info}
+                        }
+
+                        div {
+                            key: "{file.path.to_string_lossy()}-container",
+                            style: "flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; height: calc(100% - 52px);",
+                            {editor_content}
+                        }
                     }
                 }
-            }
+    } else {
+        rsx! {
+                    main {
+                        style: {
+                            let colors = use_theme().colors();
+                            format!(
+                                "flex: 1; background-color: {}; display: flex; flex-direction: column; height: 100%; min-height: 100%; overflow: visible;",
+                                colors.bg_primary
+                            )
+                        },
+
+                        TabBar {
+            open_files: open_files,
+            active_file_index: active_file_index,
+            editors: editors,  // ADD THIS
+            is_split: is_split.unwrap_or(false),
+            on_split_right: move |_| if let Some(cb) = &on_split_right { cb.call(()) },
+            on_split_down: move |_| if let Some(cb) = &on_split_down { cb.call(()) },
+            on_close_split: move |_| if let Some(cb) = &on_close_split { cb.call(()) },
         }
+
+                        div {
+                            style: "flex: 1; display: flex; align-items: center; justify-content: center;",
+                            span {
+                                style: {
+                                    let colors = use_theme().colors();
+                                    format!("color: {};", colors.text_muted)
+                                },
+                                "No file selected"
+                            }
+                        }
+                    }
+                }
     }
 }

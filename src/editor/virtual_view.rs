@@ -226,7 +226,11 @@ pub fn VirtualEditorView(editor: Signal<RopeEditor>, on_save: EventHandler<()>) 
             .into_iter()
             .map(|(line_idx, line_content, is_cursor_line, y_position)| {
                 let theme_colors = use_theme().colors();
-                let bg_color = if is_cursor_line { theme_colors.editor_selection } else { "transparent" };
+                let bg_color = if is_cursor_line {
+                    theme_colors.editor_selection
+                } else {
+                    "transparent"
+                };
                 rsx! {
                     OptimizedLineComponent {
                         key: "{line_idx}",
@@ -578,7 +582,14 @@ fn OptimizedLineComponent(
 }
 
 #[derive(Clone, Copy)]
-enum TokenClass { Keyword, String, Comment, Number, Function, Plain }
+enum TokenClass {
+    Keyword,
+    String,
+    Comment,
+    Number,
+    Function,
+    Plain,
+}
 
 fn tokenize_line(line: &str) -> Vec<(String, TokenClass)> {
     // Very simple, non-stateful tokenizer for common patterns
@@ -592,11 +603,84 @@ fn tokenize_line(line: &str) -> Vec<(String, TokenClass)> {
     // Keyword sets combined for Rust/JS/TS/General
     let keywords = [
         // Rust
-        "fn","let","mut","struct","enum","impl","trait","pub","use","mod","match","if","else","while","for","in","loop","return","break","continue","const","static","crate","super","self","Self","as","where","type","move","ref","async","await","dyn","unsafe",
+        "fn",
+        "let",
+        "mut",
+        "struct",
+        "enum",
+        "impl",
+        "trait",
+        "pub",
+        "use",
+        "mod",
+        "match",
+        "if",
+        "else",
+        "while",
+        "for",
+        "in",
+        "loop",
+        "return",
+        "break",
+        "continue",
+        "const",
+        "static",
+        "crate",
+        "super",
+        "self",
+        "Self",
+        "as",
+        "where",
+        "type",
+        "move",
+        "ref",
+        "async",
+        "await",
+        "dyn",
+        "unsafe",
         // JS/TS
-        "function","var","const","let","class","interface","extends","implements","import","from","export","return","if","else","for","while","do","switch","case","break","continue","new","this","super","try","catch","finally","throw","await","async","yield","typeof","instanceof","in","of","void","delete",
+        "function",
+        "var",
+        "const",
+        "let",
+        "class",
+        "interface",
+        "extends",
+        "implements",
+        "import",
+        "from",
+        "export",
+        "return",
+        "if",
+        "else",
+        "for",
+        "while",
+        "do",
+        "switch",
+        "case",
+        "break",
+        "continue",
+        "new",
+        "this",
+        "super",
+        "try",
+        "catch",
+        "finally",
+        "throw",
+        "await",
+        "async",
+        "yield",
+        "typeof",
+        "instanceof",
+        "in",
+        "of",
+        "void",
+        "delete",
         // General
-        "true","false","null","undefined",
+        "true",
+        "false",
+        "null",
+        "undefined",
     ];
 
     while let Some(&c) = chars.peek() {
@@ -607,14 +691,19 @@ fn tokenize_line(line: &str) -> Vec<(String, TokenClass)> {
             if let Some('/') = it.next() {
                 // // comment
                 let mut text = String::new();
-                while let Some(ch) = chars.next() { text.push(ch); }
+                while let Some(ch) = chars.next() {
+                    text.push(ch);
+                }
                 out.push((text, TokenClass::Comment));
                 break;
             }
         }
-        if c == '#' { // shell/py comment style
+        if c == '#' {
+            // shell/py comment style
             let mut text = String::new();
-            while let Some(ch) = chars.next() { text.push(ch); }
+            while let Some(ch) = chars.next() {
+                text.push(ch);
+            }
             out.push((text, TokenClass::Comment));
             break;
         }
@@ -627,9 +716,17 @@ fn tokenize_line(line: &str) -> Vec<(String, TokenClass)> {
             let mut escaped = false;
             while let Some(ch) = chars.next() {
                 text.push(ch);
-                if escaped { escaped = false; continue; }
-                if ch == '\\' { escaped = true; continue; }
-                if ch == quote { break; }
+                if escaped {
+                    escaped = false;
+                    continue;
+                }
+                if ch == '\\' {
+                    escaped = true;
+                    continue;
+                }
+                if ch == quote {
+                    break;
+                }
             }
             out.push((text, TokenClass::String));
             continue;
@@ -639,7 +736,18 @@ fn tokenize_line(line: &str) -> Vec<(String, TokenClass)> {
         if c.is_ascii_digit() {
             let mut text = String::new();
             while let Some(&ch) = chars.peek() {
-                if ch.is_ascii_hexdigit() || ch == 'x' || ch == 'b' || ch == 'o' || ch == '_' || ch == '.' { text.push(ch); chars.next(); } else { break; }
+                if ch.is_ascii_hexdigit()
+                    || ch == 'x'
+                    || ch == 'b'
+                    || ch == 'o'
+                    || ch == '_'
+                    || ch == '.'
+                {
+                    text.push(ch);
+                    chars.next();
+                } else {
+                    break;
+                }
             }
             out.push((text, TokenClass::Number));
             continue;
@@ -649,12 +757,26 @@ fn tokenize_line(line: &str) -> Vec<(String, TokenClass)> {
         if is_ident_start(c) {
             let mut ident = String::new();
             ident.push(chars.next().unwrap());
-            while let Some(&ch) = chars.peek() { if is_ident_part(ch) { ident.push(ch); chars.next(); } else { break; } }
+            while let Some(&ch) = chars.peek() {
+                if is_ident_part(ch) {
+                    ident.push(ch);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
 
             // Function heuristic: followed by '(' with no space (or with spaces)
             let mut look = chars.clone();
             let mut saw_ws = false;
-            while let Some(&ch) = look.peek() { if ch.is_whitespace() { saw_ws = true; look.next(); } else { break; } }
+            while let Some(&ch) = look.peek() {
+                if ch.is_whitespace() {
+                    saw_ws = true;
+                    look.next();
+                } else {
+                    break;
+                }
+            }
             let is_func = matches!(look.peek(), Some('('));
 
             if keywords.contains(&ident.as_str()) {
